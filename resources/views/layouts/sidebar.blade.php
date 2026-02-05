@@ -17,6 +17,9 @@
             <a href="{{ route('doctor.dashboard') }}" class="@if(request()->routeIs('doctor.dashboard')) active @endif">
                 <i class="fas fa-chart-line"></i> Dashboard
             </a>
+            <a href="{{ route('doctor.queue') }}" class="@if(request()->routeIs('doctor.queue')) active @endif">
+                <i class="fas fa-hospital-user"></i> Patient Queue
+            </a>
             <a href="{{ route('doctor.patients.search') }}" class="@if(request()->routeIs('doctor.patients*')) active @endif">
                 <i class="fas fa-search"></i> Search Patients
             </a>

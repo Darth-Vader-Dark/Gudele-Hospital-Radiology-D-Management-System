@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Patient;
 use App\Models\Appointment;
+use App\Models\RadiologyResult;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class RegistrationController extends Controller
 {
@@ -218,4 +220,33 @@ class RegistrationController extends Controller
 
         return view('registration.appointments.upcoming', compact('appointments'));
     }
+
+    // Generate Patient Summary PDF (Reception)
+    public function generatePatientReport(Patient $patient)
+    {
+        $results = RadiologyResult::where('patient_id', $patient->id)
+            ->latest()
+            ->limit(5)
+            ->get();
+
+        $nextAppointment = Appointment::where('patient_id', $patient->id)
+            ->where('scheduled_date', '>', now())
+            ->where('status', 'scheduled')
+            ->first();
+
+        // Check if patient has data to print
+        if ($results->isEmpty() && !$nextAppointment) {
+            return back()->with('warning', 'No examination results or appointments to print for this patient.');
+        }
+
+        $pdf = Pdf::loadView('pdfs.patient-summary', [
+            'patient' => $patient,
+            'results' => $results,
+            'nextAppointment' => $nextAppointment,
+        ]);
+
+        $filename = "patient_summary_{$patient->patient_id}_" . now()->format('YmdHis') . ".pdf";
+        return $pdf->download($filename);
+    }
+}
 }

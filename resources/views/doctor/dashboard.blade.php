@@ -44,6 +44,9 @@
                     <h5 class="mb-0"><i class="fas fa-link"></i> Quick Actions</h5>
                 </div>
                 <div class="card-body">
+                    <a href="{{ route('doctor.queue') }}" class="btn btn-danger btn-sm mb-2 w-100">
+                        <i class="fas fa-hospital-user"></i> Patient Queue
+                    </a>
                     <a href="{{ route('doctor.patients.search') }}" class="btn btn-primary btn-sm mb-2 w-100">
                         <i class="fas fa-search"></i> Search Patients
                     </a>

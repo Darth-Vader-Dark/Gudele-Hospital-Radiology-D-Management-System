@@ -19,6 +19,16 @@
             <a href="{{ route('doctor.appointment.create', $patient->id) }}" class="btn btn-info">
                 <i class="fas fa-calendar-plus"></i> Schedule Appointment
             </a>
+            @if($radiologyResults->count() > 0 || $prescriptions->count() > 0)
+                <a href="{{ route('doctor.patient.report', $patient->id) }}" class="btn btn-primary" target="_blank">
+                    <i class="fas fa-file-pdf"></i> Full Report PDF
+                </a>
+            @endif
+            @if($radiologyResults->count() > 0)
+                <a href="{{ route('doctor.patient.summary-pdf', $patient->id) }}" class="btn btn-secondary" target="_blank">
+                    <i class="fas fa-file-pdf"></i> Summary PDF
+                </a>
+            @endif
         </div>
     </div>
 
@@ -88,7 +98,7 @@
                                     <h6>{{ $result->test_type }}</h6>
                                     <p class="text-muted"><small>{{ $result->test_date->format('M d, Y H:i') }}</small></p>
                                     <p><strong>Findings:</strong> {{ Str::limit($result->findings, 200) }}</p>
-                                    <p><strong>Diagnosis:</strong> {{ Str::limit($result->diagnosis, 200) }}</p>
+                                    <p><strong>Conclusions:</strong> {{ Str::limit($result->diagnosis, 200) }}</p>
                                     <p>
                                         <span class="badge bg-info">{{ ucfirst($result->status) }}</span>
                                     </p>

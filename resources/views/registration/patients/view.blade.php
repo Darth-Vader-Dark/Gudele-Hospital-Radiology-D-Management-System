@@ -13,6 +13,9 @@
             <a href="{{ route('registration.patient.edit', $patient->id) }}" class="btn btn-secondary">
                 <i class="fas fa-edit"></i> Edit Patient
             </a>
+            <a href="{{ route('registration.patient.report-pdf', $patient->id) }}" class="btn btn-primary" target="_blank">
+                <i class="fas fa-file-pdf"></i> Print Patient Report
+            </a>
         </div>
     </div>
 
@@ -134,7 +137,7 @@
                                     <p class="text-muted"><small>{{ $result->test_date->format('M d, Y H:i') }}</small></p>
                                     <p><strong>Doctor:</strong> {{ $result->doctor->name }}</p>
                                     <p><strong>Findings:</strong> {{ Str::limit($result->findings, 200) }}</p>
-                                    <p><strong>Diagnosis:</strong> {{ Str::limit($result->diagnosis, 200) }}</p>
+                                    <p><strong>Conclusions:</strong> {{ Str::limit($result->diagnosis, 200) }}</p>
                                     <p>
                                         <span class="badge bg-info">{{ ucfirst($result->status) }}</span>
                                     </p>

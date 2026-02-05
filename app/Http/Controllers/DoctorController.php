@@ -6,8 +6,10 @@ use App\Models\Patient;
 use App\Models\Appointment;
 use App\Models\RadiologyResult;
 use App\Models\Prescription;
+use App\Models\PatientQueue;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class DoctorController extends Controller
 {
@@ -134,7 +136,8 @@ class DoctorController extends Controller
         $validated['doctor_id'] = Auth::id();
         $validated['created_by'] = Auth::id();
         $validated['prescribed_date'] = now();
-        $validated['expiry_date'] = now()->addDays($validated['duration_days']);
+        $validated['duration_days'] = (int) $validated['duration_days'];
+        $validated['expiry_date'] = now()->addDays((int) $validated['duration_days']);
         $validated['status'] = 'active';
 
         Prescription::create($validated);
@@ -196,4 +199,158 @@ class DoctorController extends Controller
 
         return back()->with('success', 'Appointment status updated.');
     }
+
+    // Queue Management
+    public function queue()
+    {
+        $user = Auth::user();
+        $waitingQueue = PatientQueue::getWaitingQueue($user->id);
+        $currentPatient = PatientQueue::getCurrentPatient($user->id);
+        $queueStats = PatientQueue::getQueueStats($user->id);
+        $recentlyCompleted = PatientQueue::where('doctor_id', $user->id)
+            ->whereDate('created_at', today())
+            ->where('status', 'completed')
+            ->latest('completed_at')
+            ->limit(5)
+            ->get();
+
+        return view('doctor.queue', compact('waitingQueue', 'currentPatient', 'queueStats', 'recentlyCompleted'));
+    }
+
+    public function addToQueue(Patient $patient)
+    {
+        $user = Auth::user();
+
+        // Check if patient is already in queue
+        $existingQueue = PatientQueue::where('doctor_id', $user->id)
+            ->where('patient_id', $patient->id)
+            ->whereIn('status', ['waiting', 'in_progress'])
+            ->first();
+
+        if ($existingQueue) {
+            return back()->with('warning', 'Patient is already in the queue.');
+        }
+
+        PatientQueue::addToQueue($user->id, $patient->id);
+
+        return back()->with('success', "Patient {$patient->first_name} {$patient->last_name} added to queue.");
+    }
+
+    public function startConsultation(PatientQueue $queue)
+    {
+        $this->authorizeDoctor($queue->doctor_id);
+
+        // End any previous consultation
+        $previous = PatientQueue::where('doctor_id', $queue->doctor_id)
+            ->where('status', 'in_progress')
+            ->first();
+
+        if ($previous) {
+            $previous->completeConsultation();
+        }
+
+        $queue->startConsultation();
+
+        return back()->with('success', 'Consultation started with ' . $queue->patient->first_name);
+    }
+
+    public function completeConsultation(PatientQueue $queue, Request $request)
+    {
+        $this->authorizeDoctor($queue->doctor_id);
+
+        $validated = $request->validate([
+            'notes' => 'nullable|string|max:500',
+        ]);
+
+        $queue->completeConsultation($validated['notes'] ?? null);
+
+        return back()->with('success', 'Consultation completed.');
+    }
+
+    public function markNoShow(PatientQueue $queue)
+    {
+        $this->authorizeDoctor($queue->doctor_id);
+
+        $queue->markNoShow();
+
+        return back()->with('warning', 'Patient marked as no show.');
+    }
+
+    public function removeFromQueue(PatientQueue $queue)
+    {
+        $this->authorizeDoctor($queue->doctor_id);
+
+        $patientName = $queue->patient->first_name . ' ' . $queue->patient->last_name;
+        $queue->delete();
+
+        return back()->with('success', "{$patientName} removed from queue.");
+    }
+
+    private function authorizeDoctor($doctorId)
+    {
+        if (Auth::id() !== $doctorId) {
+            abort(403, 'Unauthorized action.');
+        }
+    }
+
+    // PDF Generation Methods
+    public function generateReport(Patient $patient)
+    {
+        $doctor = Auth::user();
+        
+        // Get results and prescriptions for this patient
+        $results = RadiologyResult::where('patient_id', $patient->id)
+            ->where('doctor_id', $doctor->id)
+            ->latest()
+            ->get();
+
+        $prescriptions = Prescription::where('patient_id', $patient->id)
+            ->where('doctor_id', $doctor->id)
+            ->latest()
+            ->get();
+
+        // Check if report has content
+        if ($results->isEmpty() && $prescriptions->isEmpty()) {
+            return back()->with('warning', 'No results or prescriptions to print. Please add examination data first.');
+        }
+
+        $pdf = Pdf::loadView('pdfs.doctor-report', [
+            'patient' => $patient,
+            'doctor' => $doctor,
+            'results' => $results,
+            'prescriptions' => $prescriptions,
+        ]);
+
+        $filename = "radiology_report_{$patient->patient_id}_" . now()->format('YmdHis') . ".pdf";
+        return $pdf->download($filename);
+    }
+
+    public function generatePatientSummary(Patient $patient)
+    {
+        $results = RadiologyResult::where('patient_id', $patient->id)
+            ->latest()
+            ->limit(5)
+            ->get();
+
+        $nextAppointment = Appointment::where('patient_id', $patient->id)
+            ->where('scheduled_date', '>', now())
+            ->where('status', 'scheduled')
+            ->first();
+
+        // Check if patient has data to print
+        if ($results->isEmpty() && !$nextAppointment) {
+            return back()->with('warning', 'No examination results or appointments to print for this patient.');
+        }
+
+        $pdf = Pdf::loadView('pdfs.patient-summary', [
+            'patient' => $patient,
+            'results' => $results,
+            'nextAppointment' => $nextAppointment,
+        ]);
+
+        $filename = "patient_summary_{$patient->patient_id}_" . now()->format('YmdHis') . ".pdf";
+        return $pdf->download($filename);
+    }
 }
+
+

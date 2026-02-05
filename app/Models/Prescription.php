@@ -27,6 +27,7 @@ class Prescription extends Model
     protected $casts = [
         'prescribed_date' => 'datetime',
         'expiry_date' => 'datetime',
+        'duration_days' => 'integer',
     ];
 
     public function patient()

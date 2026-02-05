@@ -17,6 +17,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/profile', [AuthController::class, 'profile'])->name('profile');
     Route::post('/profile/update', [AuthController::class, 'updateProfile'])->name('profile.update');
     Route::post('/profile/change-password', [AuthController::class, 'changePassword'])->name('password.change');
+    
+    // Session activity tracking
+    Route::get('/session-activity', function () {
+        return response()->noContent();
+    })->name('session.activity');
 });
 
 // Admin Routes
@@ -43,9 +48,19 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 Route::middleware(['auth', 'role:doctor'])->prefix('doctor')->name('doctor.')->group(function () {
     Route::get('/dashboard', [DoctorController::class, 'dashboard'])->name('dashboard');
 
+    // Queue Management
+    Route::get('/queue', [DoctorController::class, 'queue'])->name('queue');
+    Route::post('/queue/add/{patient}', [DoctorController::class, 'addToQueue'])->name('queue.add');
+    Route::post('/queue/{queue}/start', [DoctorController::class, 'startConsultation'])->name('queue.start');
+    Route::post('/queue/{queue}/complete', [DoctorController::class, 'completeConsultation'])->name('queue.complete');
+    Route::post('/queue/{queue}/no-show', [DoctorController::class, 'markNoShow'])->name('queue.noshow');
+    Route::delete('/queue/{queue}', [DoctorController::class, 'removeFromQueue'])->name('queue.remove');
+
     // Patient Management
     Route::get('/patients/search', [DoctorController::class, 'searchPatients'])->name('patients.search');
     Route::get('/patients/{patient}', [DoctorController::class, 'viewPatient'])->name('patient.view');
+    Route::get('/patients/{patient}/generate-report', [DoctorController::class, 'generateReport'])->name('patient.report');
+    Route::get('/patients/{patient}/summary-pdf', [DoctorController::class, 'generatePatientSummary'])->name('patient.summary-pdf');
 
     // Radiology Results
     Route::get('/patients/{patient}/results/create', [DoctorController::class, 'createResult'])->name('result.create');
@@ -74,6 +89,7 @@ Route::middleware(['auth', 'role:registration'])->prefix('registration')->name('
     Route::get('/patients/{patient}', [RegistrationController::class, 'viewPatient'])->name('patient.view');
     Route::get('/patients/{patient}/edit', [RegistrationController::class, 'editPatient'])->name('patient.edit');
     Route::put('/patients/{patient}', [RegistrationController::class, 'updatePatient'])->name('patient.update');
+    Route::get('/patients/{patient}/report-pdf', [RegistrationController::class, 'generatePatientReport'])->name('patient.report-pdf');
 
     // Appointment Management
     Route::get('/appointments', [RegistrationController::class, 'appointments'])->name('appointments');

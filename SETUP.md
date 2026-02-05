@@ -15,11 +15,13 @@ This will install all required PHP packages defined in `composer.json`.
 ### Step 2: Configure Environment
 
 1. The `.env` file is already included with default settings
-2. Update database credentials if needed:
-   - `DB_HOST` - Database server (default: 127.0.0.1)
-   - `DB_DATABASE` - Database name (default: gudele_radiology)
-   - `DB_USERNAME` - Database user (default: root)
-   - `DB_PASSWORD` - Database password (leave blank for default)
+2. Update database credentials if needed (PostgreSQL):
+    - `DB_CONNECTION` - `pgsql`
+    - `DB_HOST` - Database server (default: 127.0.0.1)
+    - `DB_PORT` - Database port (default: 5432)
+    - `DB_DATABASE` - Database name (default: gudele_radiology)
+    - `DB_USERNAME` - Database user (default: postgres)
+    - `DB_PASSWORD` - Database password (default: postgres)
 
 ### Step 3: Generate Application Key
 
@@ -27,13 +29,17 @@ This will install all required PHP packages defined in `composer.json`.
 php artisan key:generate
 ```
 
-### Step 4: Create Database
+### Step 4: Create Database (PostgreSQL)
 
-Using MySQL, create a new database:
+Install PostgreSQL if you haven't already and create the database using `psql` or pgAdmin. Example using `psql`:
 
 ```sql
-CREATE DATABASE gudele_radiology CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE gudele_radiology;
+-- Optionally set an owner:
+-- ALTER DATABASE gudele_radiology OWNER TO postgres;
 ```
+
+Ensure the `pdo_pgsql` PHP extension is installed and enabled for CLI and web PHP. On Windows with XAMPP, enable `extension=pgsql` and `extension=pdo_pgsql` in your `php.ini`, then restart Apache.
 
 ### Step 5: Run Database Migrations
 
@@ -115,12 +121,13 @@ After setup, you can login with:
 
 ### Database Connection Error
 
-**Error:** "SQLSTATE[HY000] [2002] No connection could be made because the target machine actively refused it"
+**Error:** "could not connect to server: Connection refused"
 
 **Solution:**
-- Ensure MySQL is running
+- Ensure PostgreSQL server is running (`pg_ctl start` or use services)
 - Check database connection settings in `.env`
-- Verify database exists: `SHOW DATABASES;`
+- Verify database exists using `psql -l` or `\l` inside psql
+- Ensure `pdo_pgsql` is enabled in PHP for CLI and web
 
 ### Permission Denied on Storage
 
